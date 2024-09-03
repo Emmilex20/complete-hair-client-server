@@ -7,7 +7,6 @@ const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
 console.log(process.env.DB_USER); // remove this after you've confirmed it is working
-const User = require("../server/api/models/User"); // Import the User model
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Payment = require("../server/api/models/Payments"); // Adjust the path accordingly
 
