@@ -1,31 +1,21 @@
 const express = require('express');
 const router = express.Router();
-
-// Import models
-const Payment = require('../models/Payments'); // Corrected model name
-const Hairs = require('../models/Hairs');
-
-// Middleware
-const verifyToken = require('../middleware/verifyToken');
-const verifyAdmin = require('../middleware/verifyAdmin');
+const Payment = require('../models/Payments'); // Adjust according to your structure
 
 // Get all orders stats
 router.get('/', async (req, res) => {
     try {
         const result = await Payment.aggregate([
-            // Step 1: Unwind and join collections
             { $unwind: '$cartItems' },
             {
                 $lookup: {
-                    from: 'Kachi-Store.hairs',
+                    from: 'hairs', // Ensure this matches your collection name
                     localField: 'cartItems',
                     foreignField: '_id',
                     as: 'hairDetails'
                 }
             },
             { $unwind: { path: '$hairDetails', preserveNullAndEmptyArrays: true } },
-        
-            // Step 2: Group by date and aggregate quantities and revenue
             {
                 $group: {
                     _id: {
@@ -37,11 +27,9 @@ router.get('/', async (req, res) => {
                     revenue: { $sum: '$price' }
                 }
             },
-        
-            // Step 3: Sort by date
-            { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
-        
-            // Step 4: Project the final output
+            {
+                $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 }
+            },
             {
                 $project: {
                     _id: 0,
@@ -55,13 +43,11 @@ router.get('/', async (req, res) => {
                 }
             }
         ]);
-        
+
         res.json(result);
     } catch (error) {
-        // console.error("Error during aggregation:", error.message);
         res.status(500).send("Internal Server Error: " + error.message);
     }
 });
-
 
 module.exports = router;
