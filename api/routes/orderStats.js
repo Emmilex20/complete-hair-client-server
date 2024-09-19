@@ -1,21 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const Payment = require('../models/Payments');
+
+// Import models
+const Payment = require('../models/Payments'); // Corrected model name
+const Hairs = require('../models/Hairs');
+
+// Middleware
+const verifyToken = require('../middleware/verifyToken');
+const verifyAdmin = require('../middleware/verifyAdmin');
 
 // Get all orders stats
 router.get('/', async (req, res) => {
     try {
         const result = await Payment.aggregate([
-            { $unwind: '$cartItems' }, // Check that `cartItems` exists in Payment schema
+            // Step 1: Unwind and join collections
+            { $unwind: '$cartItems' },
             {
                 $lookup: {
-                    from: 'hairs', // Ensure this matches your collection name in MongoDB
-                    localField: 'cartItems', // Adjust this to point to the correct field in `cartItems`
+                    from: 'Kachi-Store.hairs',
+                    localField: 'cartItems',
                     foreignField: '_id',
                     as: 'hairDetails'
                 }
             },
             { $unwind: { path: '$hairDetails', preserveNullAndEmptyArrays: true } },
+        
+            // Step 2: Group by date and aggregate quantities and revenue
             {
                 $group: {
                     _id: {
@@ -23,13 +33,15 @@ router.get('/', async (req, res) => {
                         month: { $month: '$createdAt' },
                         day: { $dayOfMonth: '$createdAt' }
                     },
-                    quantity: { $sum: '$cartItems.quantity' }, // Ensure cartItems has a quantity field
+                    quantity: { $sum: '$quantity' },
                     revenue: { $sum: '$price' }
                 }
             },
-            {
-                $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 }
-            },
+        
+            // Step 3: Sort by date
+            { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } },
+        
+            // Step 4: Project the final output
             {
                 $project: {
                     _id: 0,
@@ -43,15 +55,13 @@ router.get('/', async (req, res) => {
                 }
             }
         ]);
-
-        // Log the result to check if the aggregation returns correct data
-        console.log("Order Stats Result:", result);
-
+        
         res.json(result);
     } catch (error) {
-        console.error("Error in /orderStats:", error.message);
+        // console.error("Error during aggregation:", error.message);
         res.status(500).send("Internal Server Error: " + error.message);
     }
 });
+
 
 module.exports = router;
